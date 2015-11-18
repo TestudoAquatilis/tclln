@@ -1,0 +1,15 @@
+# package-config
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: TclLN
+Description: TclLN is a library for integrating a tcl-shell with custom commands
+Version: 0.9
+# URL: 
+Requires: tcl >= 8.6
+Requires.private: glib-2.0 >= 2.40.0
+Libs: -L${libdir} -ltclln
+# Libs.private:
+Cflags: -I${includedir}
