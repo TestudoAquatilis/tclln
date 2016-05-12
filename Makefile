@@ -52,3 +52,6 @@ $(OBJDIR):
 clean:
 	rm -f $(EXECUTABLE) $(LIBRARY) $(OBJECTS) $(DEPS) $(LOBJECTS) $(LDEPS)
 	rm -rf $(OBJDIR) $(LOBJDIR)
+
+memcheck: all
+	valgrind --leak-check=full --suppressions=memcheck/suppress_libtcl.supp ./$(EXECUTABLE)

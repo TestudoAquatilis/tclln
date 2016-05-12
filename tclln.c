@@ -35,15 +35,15 @@
  *************************************************/
 
 struct tclln_data {
-    // tcl
+    /* tcl */
     Tcl_Interp *tcl_interp;
 
-    // prompt
+    /* prompt */
     const char *prompt_string_main;
     const char *prompt_string_multiline;
     bool       multiline;
 
-    // completion
+    /* completion */
     GString      *completion_begin;
 
     GList        *completion_list;
@@ -52,7 +52,7 @@ struct tclln_data {
     GTree        *completion_arg_table;
     GStringChunk *completion_arg_strings;
 
-    // exit
+    /* exit */
     int          return_code;
     bool         exit_tcl;
 };
@@ -102,7 +102,7 @@ struct tclln_data * tclln_new (const char *prog_name)
     struct tclln_data *tclln = (struct tclln_data *) malloc (sizeof (struct tclln_data));
     if (tclln == NULL) return NULL;
 
-    // data
+    /* data */
     tclln->multiline               = false;
     tclln->prompt_string_main      = default_prompt_main;
     tclln->prompt_string_multiline = default_prompt_multiline;
@@ -117,18 +117,18 @@ struct tclln_data * tclln_new (const char *prog_name)
     tclln->return_code = 0;
     tclln->exit_tcl    = false;
 
-    // tcl interpreter
+    /* tcl interpreter */
     tclln->tcl_interp = Tcl_CreateInterp();
 
     if (tclln->tcl_interp == NULL) goto tclln_init_error;
     Tcl_Preserve (tclln->tcl_interp);
 
-    // set utf-8 as system encoding
+    /* set utf-8 as system encoding */
     if (Tcl_Eval (tclln->tcl_interp, "encoding system utf-8\n") != TCL_OK) {
         fprintf(stderr, "Error: could not set system encoding to utf-8\n");
     }
 
-    // completion
+    /* completion */
     tclln->completion_begin   = g_string_new (NULL);
     tclln->completion_strings = g_string_chunk_new (32);
 
@@ -145,13 +145,13 @@ struct tclln_data * tclln_new (const char *prog_name)
 
     completion_table_add_defaults (tclln);
 
-    // exit
+    /* exit */
     Tcl_CreateObjCommand (tclln->tcl_interp, "exit", exit_command, (ClientData) tclln, NULL);
 
-    // success
+    /* success */
     return tclln;
 
-    // error
+    /* error */
 tclln_init_error:
     tclln_free (tclln);
 
@@ -168,7 +168,6 @@ void tclln_free (struct tclln_data *tclln)
         Tcl_DeleteInterp (tclln->tcl_interp);
         Tcl_Release (tclln->tcl_interp);
         tclln->tcl_interp = NULL;
-        Tcl_Finalize ();
     }
     if (tclln->completion_begin != NULL) {
         g_string_free (tclln->completion_begin, true);
@@ -207,10 +206,10 @@ static gboolean free_glist_value_in_tree (gpointer key, gpointer value, gpointer
 
 bool tclln_run (struct tclln_data *tclln)
 {
-    // for multi-line inputs
+    /* for multi-line inputs */
     GString *gs_input = g_string_new (NULL);
 
-    // prepare linenoise for interaction with this
+    /* prepare linenoise for interaction with this */
     tclln_completion = tclln;
     linenoiseSetCompletionCallback (completion);
     linenoiseSetMultiLine (1);
@@ -234,7 +233,7 @@ bool tclln_run (struct tclln_data *tclln)
             linenoiseHistoryAdd (line);
         }
 
-        // multiline?
+        /* multiline? */
         if (tclln->multiline) {
             gs_input = g_string_append (gs_input, "\n");
             gs_input = g_string_append (gs_input, line);
@@ -263,7 +262,7 @@ bool tclln_run (struct tclln_data *tclln)
             fprintf ((tcl_res == TCL_OK ? stdout : stderr), "%s\n", result_string);
         }
 
-        // end of multiline
+        /* end of multiline */
         if (tclln->multiline) {
             tclln->multiline = false;
             gs_input = g_string_assign (gs_input, "");
@@ -281,20 +280,20 @@ bool tclln_run (struct tclln_data *tclln)
 #define FILE_BUF_LEN 1024
 bool tclln_run_file (struct tclln_data *tclln, const char *script_name, bool verbose)
 {
-    // check for filename
+    /* check for filename */
     if (script_name == NULL) {
         fprintf (stderr, "Error: no filename specified\n");
         return false;
     }
 
-    // try to open file
+    /* try to open file */
     FILE *infile = fopen (script_name, "r");
     if (infile == NULL) {
         fprintf (stderr, "Error: failed to open file %s\n", script_name);
         return false;
     }
 
-    // for multi-line inputs
+    /* for multi-line inputs */
     GString *gs_input = g_string_new (NULL);
 
     char buf [FILE_BUF_LEN];
@@ -304,16 +303,16 @@ bool tclln_run_file (struct tclln_data *tclln, const char *script_name, bool ver
             break;
         }
 
-        // try reading
+        /* try reading */
         char *line = fgets (buf, FILE_BUF_LEN, infile);
 
         if (line == NULL) {
-            // EOF and nothing left to execute? -> finish
+            /* EOF and nothing left to execute? -> finish */
             if (gs_input->len == 0) break;
         } else {
             gs_input = g_string_append (gs_input, line);
 
-            // line not yet finished? -> wait for more input
+            /* line not yet finished? -> wait for more input */
             if (gs_input->len == 0) continue;
 
             char end = gs_input->str[gs_input->len - 1];
@@ -322,16 +321,16 @@ bool tclln_run_file (struct tclln_data *tclln, const char *script_name, bool ver
 
         bool brace_match = (Tcl_CommandComplete (gs_input->str) == 1 ? true : false);
         if (!brace_match) {
-            // no complete tcl command? wait for more input
+            /* no complete tcl command? wait for more input */
             continue;
         }
 
-        // verbose? print command:
+        /* verbose? print command: */
         if (verbose) {
             fprintf (stdout, gs_input->str);
         }
 
-        // enough input for script execution:
+        /* enough input for script execution: */
         int tcl_res = Tcl_Eval (tclln->tcl_interp, gs_input->str);
 
         if (verbose || (tcl_res != TCL_OK)) {
@@ -347,7 +346,7 @@ bool tclln_run_file (struct tclln_data *tclln, const char *script_name, bool ver
             }
         }
 
-        // next input
+        /* next input */
         g_string_assign (gs_input, "");
     }
 
@@ -457,7 +456,7 @@ static void completion_table_add_command (struct tclln_data *tclln, const char *
     GList *arg_list = NULL;
 
     for (int i = 0; arg_complete_list[i] != NULL; i++) {
-        arg_list = g_list_append (arg_list, g_string_chunk_insert_const (tclln->completion_arg_strings, arg_complete_list[i]));
+        arg_list = g_list_prepend (arg_list, g_string_chunk_insert_const (tclln->completion_arg_strings, arg_complete_list[i]));
     }
 
     arg_list = g_list_sort (arg_list, (GCompareFunc) strcmp);
@@ -474,17 +473,41 @@ static void completion_table_add_command (struct tclln_data *tclln, const char *
 
 static void completion_table_add_defaults (struct tclln_data *tclln)
 {
-    completion_table_add_command (tclln, "lsearch",
-        (const char * const []) {"-exact", "-glob", "-regexp", "-sorted", "-all", "-inline", "-not", "-start",
-            "-ascii", "-dictionary", "-integer", "-nocase", "-real", "-decreasing", "-increasing", "-bisect",
-            "-index", "-subindex", NULL});
+    completion_table_add_command (tclln, "after",
+        (const char * const []) {"cancel", "idle", "info", NULL});
 
-    completion_table_add_command (tclln, "lsort",
-        (const char * const []) {"-ascii", "-dictionary", "-integer", "-real", "-command", "-increasing", "-decreasing",
-            "-indices", "-index", "-stride", "-nocase", "-unique", NULL});
+    completion_table_add_command (tclln, "array",
+        (const char * const []) {"anymore", "donesearch", "exists", "get", "names", "nextelement", "set", "size",
+            "startsearch", "statistics", "unset", NULL});
 
-    completion_table_add_command (tclln, "puts",
-        (const char * const []) {"-nonewline",  NULL});
+    completion_table_add_command (tclln, "binary",
+        (const char * const []) {"decode", "encode", "format", "scan", "base64", "hex", "uuencode", "-maxlen",
+            "-wrapchar", "-strict", NULL});
+
+    completion_table_add_command (tclln, "chan",
+        (const char * const []) {"blocked", "close", "configure", "copy", "create", "current", "end", "eof", "event",
+            "flush", "gets", "names", "pending", "pipe", "pop", "postevent", "push", "puts", "read", "seek", "start",
+            "tell", "truncate", "-blocking", "-buffering", "-buffersize", "-encoding", "-eofchar", "-eofchar", "-nonewline",
+            "-translation", NULL});
+
+    completion_table_add_command (tclln, "chan",
+        (const char * const []) {"add", "clicks", "format", "microseconds", "milliseconds", "scan", "seconds", "-base",
+        "-format", "-gmt", "-locale", "-timezone", NULL});
+
+    completion_table_add_command (tclln, "dict",
+        (const char * const []) {"append", "create", "exists", "filter", "key", "script", "value", "for", "get", "incr",
+            "info", "keys", "lappend", "map", "merge", "remove", "replace", "set", "size", "unset", "update", "values",
+            "with", NULL});
+
+    completion_table_add_command (tclln, "encoding",
+        (const char * const []) {"convertfrom", "convertto", "dirs", "names", "system", NULL});
+
+    completion_table_add_command (tclln, "fconfigure",
+        (const char * const []) {"-blocking", "-buffering", "-buffersize", "-encoding", "-eofchar", "-eofchar", "-translation",
+        "-translation", NULL});
+
+    completion_table_add_command (tclln, "fcopy",
+        (const char * const []) {"-size", "-command", NULL});
 
     completion_table_add_command (tclln, "file",
         (const char * const []) {"atime", "attributes", "channels", "copy", "-force", "dirname", "executable", "exists",
@@ -492,21 +515,103 @@ static void completion_table_add_defaults (struct tclln_data *tclln)
             "owned", "pathtype", "readable", "readlink", "rename", "rootname", "separator", "size", "split", "stat",
             "system", "tail", "tempfile", "type", "volumes", "writable", NULL});
 
+    completion_table_add_command (tclln, "fileevent",
+        (const char * const []) {"readable", "writeable", NULL});
+
+    completion_table_add_command (tclln, "glob",
+        (const char * const []) {"-directory", "-join", "-nocomplain", "-path", "-tails", "-types", NULL});
+
+    completion_table_add_command (tclln, "history",
+        (const char * const []) {"add", "change", "clear", "event", "info", "keep", "nextid", "redo", NULL});
+
     completion_table_add_command (tclln, "info",
         (const char * const []) {"args", "body", "class", "cmdcount", "commands", "complete", "coroutine", "default",
             "errorstack", "exists", "frame", "function", "globals", "hostname", "level", "library", "loaded",
             "locals", "nameofexecutable", "object", "patchlevel", "procs", "script", "sharedlibextension",
             "tclversion", "vars", NULL});
 
+    completion_table_add_command (tclln, "interp",
+        (const char * const []) { "alias", "aliases", "bgerror", "cancel", "create", "debug", "delete", "eval",
+            "exists", "expose", "hide", "hidden", "invokehidden", "issafe", "limit", "marktrusted", "recursionlimit",
+            "share", "slaves", "target", "transfer", NULL});
+
+    completion_table_add_command (tclln, "load",
+        (const char * const []) {"-global", "-lazy", NULL});
+
+    completion_table_add_command (tclln, "lsearch",
+        (const char * const []) {"-exact", "-glob", "-regexp", "-sorted", "-all", "-inline", "-not", "-start",
+            "-ascii", "-dictionary", "-integer", "-nocase", "-real", "-decreasing", "-increasing", "-bisect",
+            "-index", "-subindices", NULL});
+
+    completion_table_add_command (tclln, "lsort",
+        (const char * const []) {"-ascii", "-dictionary", "-integer", "-real", "-command", "-increasing", "-decreasing",
+            "-indices", "-index", "-stride", "-nocase", "-unique", NULL});
+
     completion_table_add_command (tclln, "namespace",
         (const char * const []) {"children", "code", "current", "delete", "ensemble", "eval", "exists", "export", "-clear",
             "forget", "import", "-force", "inscope", "origin", "parent", "path", "qualifiers", "tail", "upvar", "unknown",
             "which", "-command", "-variable", NULL});
-    // TODO: add other commands ...
-    // - regexp
-    // - regsub
-    // - string
-    // - subst
+
+    completion_table_add_command (tclln, "package",
+        (const char * const []) {"forget", "ifneeded", "names", "present", "provide", "require", "unknown", "vcompare",
+            "versions", "vsatisfies", "prefer", NULL});
+
+    completion_table_add_command (tclln, "puts",
+        (const char * const []) {"-nonewline",  NULL});
+
+    completion_table_add_command (tclln, "read",
+        (const char * const []) {"-nonewline",  NULL});
+
+    completion_table_add_command (tclln, "regexp",
+        (const char * const []) {"-about", "-expanded", "-indices", "-line", "-linestop", "-lineanchor", "-nocase",
+            "-all", "-inline", "-start", NULL});
+
+    completion_table_add_command (tclln, "regsub",
+        (const char * const []) {"-all", "-expanded", "-line", "-linestop", "-lineanchor", "-nocase", "-start", NULL});
+
+    completion_table_add_command (tclln, "return",
+        (const char * const []) {"ok", "error", "return", "break", "continue", "-code", "-errorcode", "-errorinfo",
+            "-errorstack", "-level", "-options", NULL});
+
+    completion_table_add_command (tclln, "seek",
+        (const char * const []) {"start", "current", "end", NULL});
+
+    completion_table_add_command (tclln, "self",
+        (const char * const []) {"call", "caller", "class", "filter", "method", "namespace", "next", "object",
+            "target", NULL});
+
+    completion_table_add_command (tclln, "socket",
+        (const char * const []) {"-async", "-connecting", "-error", "-myaddr", "-myport", "-peername", "-server",
+            "-sockname", NULL});
+
+    completion_table_add_command (tclln, "source",
+        (const char * const []) {"-encoding", NULL});
+
+    completion_table_add_command (tclln, "string",
+        (const char * const []) { "-failindex", "-length", "-nocase", "-strict", "alnum", "alpha", "ascii", "boolean",
+            "cat", "compare", "control", "digit", "double", "entier", "equal", "false", "first", "graph", "index",
+            "integer", "is", "last", "length", "list", "lower", "map", "match", "print", "punct", "range", "repeat",
+            "replace", "reverse", "space", "tolower", "totitle", "toupper", "trim", "trimleft", "trimright", "true",
+            "upper", "wideinteger", "wordchar", "xdigit", NULL});
+
+    completion_table_add_command (tclln, "subst",
+        (const char * const []) {"-nobackslashes", "-nocommands", "-novariables", NULL});
+
+    completion_table_add_command (tclln, "switch",
+        (const char * const []) {"-exact", "-glob", "-regexp", "-nocase", "-matchvar", "-indexvar", NULL});
+
+    completion_table_add_command (tclln, "trace",
+        (const char * const []) {"add", "array", "command", "delete", "enter", "enterstep", "execution", "info",
+            "leave", "leavestep", "read", "remove", "rename", "unset", "variable", "vdelete", "vinfo", "write", NULL});
+
+    completion_table_add_command (tclln, "unload",
+        (const char * const []) {"-nocomplain", "-keeplibrary", NULL});
+
+    completion_table_add_command (tclln, "unset",
+        (const char * const []) {"-nocomplain", NULL});
+
+    completion_table_add_command (tclln, "update",
+        (const char * const []) {"idletasks", NULL});
 }
 
 
@@ -516,12 +621,12 @@ static void completion (const char *input_buffer, linenoiseCompletions *linenois
 
     if (tclln == NULL) return;
 
-    // empty line?
+    /* empty line? */
     if (strcmp (input_buffer, "") == 0) return;
 
     tclln->completion_begin = g_string_assign (tclln->completion_begin, input_buffer);
 
-    // generate completion data
+    /* generate completion data */
     completion_generate (tclln);
     tclln->completion_list = g_list_sort (tclln->completion_list, (GCompareFunc) strcmp);
 
@@ -529,7 +634,7 @@ static void completion (const char *input_buffer, linenoiseCompletions *linenois
         return;
     }
 
-    // fill completion
+    /* fill completion */
     GList *completion_list = tclln->completion_list;
 
     GString *temp_str = g_string_new (NULL);
@@ -548,7 +653,7 @@ static void completion (const char *input_buffer, linenoiseCompletions *linenois
 
 static void completion_generate (struct tclln_data *tclln)
 {
-    // init
+    /* init */
     if (tclln->completion_list != NULL) {
         g_list_free (tclln->completion_list);
         tclln->completion_list = NULL;
@@ -556,7 +661,7 @@ static void completion_generate (struct tclln_data *tclln)
 
     g_string_chunk_clear (tclln->completion_strings);
 
-    // find out what to complete
+    /* find out what to complete */
     int pos_cmd = 0;
     int len_cmd = 0;
     int pos_start = strlen (tclln->completion_begin->str);
@@ -575,25 +680,25 @@ static void completion_generate (struct tclln_data *tclln)
     str_base = g_string_chunk_insert (tclln->completion_strings, &(in_buf[pos_start]));
 
     if (pos_start == pos_cmd) {
-        // nothing ?
+        /* nothing ? */
         if (len_cmd == 0) return;
 
-        // command or var
+        /* command or var */
         if (*str_cmd != '$') {
-            // complete procs/commands
+            /* complete procs/commands */
             completion_generate_tcl_procs (tclln->tcl_interp, tclln->completion_strings, &(tclln->completion_list), str_cmd);
             g_string_truncate (tclln->completion_begin, pos_cmd);
             return;
         }
     }
 
-    // variable or argument
+    /* variable or argument */
     if (*str_base == '$') {
-        // variable
+        /* variable */
         str_base++;
         pos_start++;
 
-        // nothing?
+        /* nothing? */
         if (*str_base == '\0') return;
 
         completion_generate_tcl_vars (tclln->tcl_interp, tclln->completion_strings, &(tclln->completion_list), str_base);
@@ -601,7 +706,7 @@ static void completion_generate (struct tclln_data *tclln)
         return;
     }
 
-    // argument:
+    /* argument: */
     completion_generate_args (tclln->completion_arg_table, tclln->completion_strings, &(tclln->completion_list), str_cmd, str_base);
     g_string_truncate (tclln->completion_begin, pos_start);
 
@@ -625,49 +730,49 @@ static void completion_add_tcl_result (Tcl_Interp *interp, GStringChunk *gs_chun
 
         char * elem_str = g_string_chunk_insert (gs_chunk, Tcl_GetString (elem));
 
-        *res_list = g_list_append (*res_list, elem_str);
+        *res_list = g_list_prepend (*res_list, elem_str);
     }
 }
 
 static void completion_generate_tcl_vars (Tcl_Interp *interp, GStringChunk *gs_chunk, GList **res_list, const char *base)
 {
-    // vars
+    /* vars */
     GString *tcl_command = g_string_new (NULL);
     if (tcl_command == NULL) return;
 
     g_string_printf (tcl_command, "info vars %s*\n", base);
 
     if (Tcl_Eval (interp, tcl_command->str) == TCL_OK) {
-        // handle result
+        /* handle result */
         completion_add_tcl_result (interp, gs_chunk, res_list);
     }
 
-    // finish
+    /* finish */
     g_string_free (tcl_command, true);
 }
 
 static void completion_generate_tcl_procs (Tcl_Interp *interp, GStringChunk *gs_chunk, GList **res_list, const char *base)
 {
-    // commands
+    /* commands */
     GString *tcl_command = g_string_new (NULL);
     if (tcl_command == NULL) return;
 
     g_string_printf (tcl_command, "info commands %s*\n", base);
 
     if (Tcl_Eval (interp, tcl_command->str) == TCL_OK) {
-        // handle result
+        /* handle result */
         completion_add_tcl_result (interp, gs_chunk, res_list);
     }
 
-    // procs
+    /* procs */
     g_string_printf (tcl_command, "info procs %s*\n", base);
 
     if (Tcl_Eval (interp, tcl_command->str) == TCL_OK) {
-        // handle result
+        /* handle result */
         completion_add_tcl_result (interp, gs_chunk, res_list);
     }
 
-    // finish
+    /* finish */
     g_string_free (tcl_command, true);
 }
 
@@ -675,7 +780,7 @@ static void completion_generate_args (GTree *arg_table, GStringChunk *gs_chunk, 
 {
     if (command == NULL) return;
 
-    // remove "::" at beginning before lookup
+    /* remove "::" at beginning before lookup */
     if (strlen (command) > 2) {
         if ((command[0] == ':') && (command[1] == ':')) {
             command = command+2;
@@ -683,7 +788,7 @@ static void completion_generate_args (GTree *arg_table, GStringChunk *gs_chunk, 
     }
 
     GList *arg_list = (GList *) g_tree_lookup (arg_table, command);
-    
+
     if (arg_list == NULL) return;
 
     GList *candidates = *res_list;
@@ -694,7 +799,7 @@ static void completion_generate_args (GTree *arg_table, GStringChunk *gs_chunk, 
     for (GList *i_elem = arg_list; i_elem != NULL; i_elem = i_elem->next) {
         if (strncmp (i_elem->data, base, len) != 0) continue;
 
-        candidates = g_list_append (candidates, i_elem->data);
+        candidates = g_list_prepend (candidates, i_elem->data);
     }
 
     *res_list = candidates;
@@ -735,6 +840,7 @@ static int exit_command (ClientData client_data, Tcl_Interp *interp, int objc, T
 }
 
 
-// TODO list:
-// - better completion?
+/* TODO list:
+ * - better completion?
+ */
 

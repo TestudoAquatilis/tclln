@@ -1,0 +1,22 @@
+{
+   <Suppress_libTcl_TclpAlloc_mem>
+   Memcheck:Leak
+   match-leak-kinds: possible
+   ...
+   fun:TclpAlloc
+}
+{
+   <Suppress_libTcl_TclThreadAllocObj_mem>
+   Memcheck:Leak
+   match-leak-kinds: possible
+   ...
+   fun:TclThreadAllocObj
+}
+{
+   <Suppress_libTcl_TclpThreadCreate_mem>
+   Memcheck:Leak
+   match-leak-kinds: possible
+   ...
+   fun:TclpThreadCreate
+}
+
