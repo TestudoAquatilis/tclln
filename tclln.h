@@ -62,7 +62,7 @@ bool tclln_run_file (TclLN tclln, const char *script_name, bool verbose);
  *   delete_proc: delete proc for command (see tcl library)
  */
 Tcl_Command tclln_add_command (TclLN tclln, const char *command_name, const char * const arg_complete_list[],
-                Tcl_ObjCmdProc command_proc, ClientData client_data, Tcl_CmdDeleteProc *delete_proc);
+                Tcl_ObjCmdProc *command_proc, ClientData client_data, Tcl_CmdDeleteProc *delete_proc);
 
 /* set prompt string
  *   tclln: TclLN data

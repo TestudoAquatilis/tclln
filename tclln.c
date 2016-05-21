@@ -362,7 +362,7 @@ bool tclln_run_file (struct tclln_data *tclln, const char *script_name, bool ver
 
 Tcl_Command tclln_add_command (
                 struct tclln_data *tclln, const char *command_name, const char * const arg_complete_list[],
-                Tcl_ObjCmdProc command_proc, ClientData client_data, Tcl_CmdDeleteProc *delete_proc)
+                Tcl_ObjCmdProc *command_proc, ClientData client_data, Tcl_CmdDeleteProc *delete_proc)
 {
     Tcl_Command result = Tcl_CreateObjCommand (tclln->tcl_interp, command_name, command_proc, client_data, delete_proc);
 
