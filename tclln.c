@@ -128,6 +128,11 @@ struct tclln_data * tclln_new (const char *prog_name)
         fprintf(stderr, "Error: could not set system encoding to utf-8\n");
     }
 
+    /* init script */
+    if (Tcl_Init (tclln->tcl_interp) == TCL_ERROR) {
+        fprintf(stderr, "Error: could not source init script\n");
+    }
+
     /* completion */
     tclln->completion_begin   = g_string_new (NULL);
     tclln->completion_strings = g_string_chunk_new (32);
@@ -341,7 +346,6 @@ bool tclln_run_file (struct tclln_data *tclln, const char *script_name, bool ver
             }
 
             if (tcl_res != TCL_OK) {
-                fprintf (stdout, "brace match: %d\n", (brace_match ? 1 : 0));
                 break;
             }
         }
@@ -839,8 +843,4 @@ static int exit_command (ClientData client_data, Tcl_Interp *interp, int objc, T
     return TCL_OK;
 }
 
-
-/* TODO list:
- * - better completion?
- */
 
