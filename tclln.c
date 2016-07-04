@@ -677,7 +677,7 @@ static void completion_generate (struct tclln_data *tclln)
 
     /* find beginning of relevant section */
     int pos_tmp = tclln->completion_begin->len - 1;
-    while (pos_tmp > 0) {
+    while (pos_tmp >= 0) {
         if (in_buf[pos_tmp] == '[') break;
         if (in_buf[pos_tmp] == '{') break;
         pos_tmp --;
