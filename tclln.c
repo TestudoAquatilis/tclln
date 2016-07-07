@@ -676,10 +676,15 @@ static void completion_generate (struct tclln_data *tclln)
     const char *in_buf = tclln->completion_begin->str;
 
     /* find beginning of relevant section */
+    int brace_count = 0;
     int pos_tmp = tclln->completion_begin->len - 1;
     while (pos_tmp >= 0) {
-        if (in_buf[pos_tmp] == '[') break;
-        if (in_buf[pos_tmp] == '{') break;
+        char current = in_buf[pos_tmp];
+        if (current == ']') brace_count++;
+        if (current == '}') brace_count++;
+        if (current == '[') brace_count--;
+        if (current == '{') brace_count--;
+        if (brace_count < 0) break;
         pos_tmp --;
     }
     pos_cmd = pos_tmp + 1;
