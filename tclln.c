@@ -243,7 +243,7 @@ bool tclln_run (struct tclln_data *tclln)
             gs_input = g_string_append (gs_input, "\n");
             gs_input = g_string_append (gs_input, line);
 
-            free (line);
+            linenoiseFree (line);
             line     = gs_input->str;
         }
 
@@ -252,7 +252,7 @@ bool tclln_run (struct tclln_data *tclln)
         if (!brace_match) {
             if (!tclln->multiline) {
                 gs_input = g_string_append (gs_input, line);
-                free (line);
+                linenoiseFree (line);
                 tclln->multiline = true;
             }
 
@@ -272,7 +272,7 @@ bool tclln_run (struct tclln_data *tclln)
             tclln->multiline = false;
             gs_input = g_string_assign (gs_input, "");
         } else {
-            free (line);
+            linenoiseFree (line);
         }
     }
 
