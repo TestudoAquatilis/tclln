@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <errno.h>
+#include <dirent.h>
 
 #include <glib.h>
 
@@ -74,6 +75,7 @@ static void completion_add_tcl_result (Tcl_Interp *interp, GStringChunk *gs_chun
 static void completion_generate_tcl_procs (Tcl_Interp *interp, GStringChunk *gs_chunk, GList **res_list, const char *base);
 static void completion_generate_tcl_vars  (Tcl_Interp *interp, GStringChunk *gs_chunk, GList **res_list, const char *base);
 static void completion_generate_args (GTree *arg_table, GStringChunk *gs_chunk, GList **res_list, const char *command, const char *base);
+static void completion_generate_files (GStringChunk *gs_chunk, GList **res_list, const char *base);
 static int tcl_completion_add_command (ClientData client_data, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
 
 static int exit_command (ClientData client_data, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
@@ -710,7 +712,7 @@ static void completion_generate (struct tclln_data *tclln)
         }
     }
 
-    /* variable or argument */
+    /* variable or argument/files */
     if (*str_base == '$') {
         /* variable */
         str_base++;
@@ -722,10 +724,13 @@ static void completion_generate (struct tclln_data *tclln)
         completion_generate_tcl_vars (tclln->tcl_interp, tclln->completion_strings, &(tclln->completion_list), str_base);
         g_string_truncate (tclln->completion_begin, pos_start);
         return;
+    } else {
+        /* argument: */
+        completion_generate_args (tclln->completion_arg_table, tclln->completion_strings, &(tclln->completion_list), str_cmd, str_base);
+        /* files */
+        completion_generate_files (tclln->completion_strings, &(tclln->completion_list), str_base);
     }
 
-    /* argument: */
-    completion_generate_args (tclln->completion_arg_table, tclln->completion_strings, &(tclln->completion_list), str_cmd, str_base);
     g_string_truncate (tclln->completion_begin, pos_start);
 
     return;
@@ -812,7 +817,6 @@ static void completion_generate_args (GTree *arg_table, GStringChunk *gs_chunk, 
     GList *candidates = *res_list;
 
     int len = strlen (base);
-    if (len <= 0) return;
 
     for (GList *i_elem = arg_list; i_elem != NULL; i_elem = i_elem->next) {
         if (strncmp (i_elem->data, base, len) != 0) continue;
@@ -823,6 +827,62 @@ static void completion_generate_args (GTree *arg_table, GStringChunk *gs_chunk, 
     *res_list = candidates;
 }
 
+static void completion_generate_files (GStringChunk *gs_chunk, GList **res_list, const char *base)
+{
+    GString *path_dir  = g_string_new (base);
+    GString *path_file = NULL;
+
+    gssize path_dir_len = path_dir->len - 1;
+
+    /* find last '/' */
+    while ((path_dir_len >= 0) && (path_dir->str[path_dir_len] != '/')) {
+        path_dir_len--;
+    }
+
+    if (path_dir_len < 0) {
+        path_file = path_dir;
+        path_dir  = g_string_new ("./");
+    } else {
+        path_dir_len++;
+        path_file = g_string_new (&(path_dir->str[path_dir_len]));
+        path_dir  = g_string_truncate (path_dir, path_dir_len);
+    }
+
+    /* open dir and find matching files */
+    DIR *dir = opendir (path_dir->str);
+    if (dir == NULL) goto completion_generate_files_free;
+
+    GString *temp_result = g_string_new (NULL);
+    GList *candidates = *res_list;
+
+    for (struct dirent *i_entry = readdir (dir); i_entry != NULL; i_entry = readdir (dir)) {
+        const char *i_name = i_entry->d_name;
+
+        if (strncmp (path_file->str, i_name, path_file->len) != 0) continue;
+
+        if (path_dir_len < 0) {
+            /* clear */
+            temp_result = g_string_set_size (temp_result, 0);
+        } else {
+            /* dir */
+            temp_result = g_string_assign (temp_result, path_dir->str);
+        }
+        temp_result = g_string_append (temp_result, i_name);
+
+        char *i_completion = g_string_chunk_insert (gs_chunk, temp_result->str);
+        candidates = g_list_prepend (candidates, i_completion);
+    }
+
+    *res_list = candidates;
+
+    closedir (dir);
+    g_string_free (temp_result, true);
+
+completion_generate_files_free:
+    /* free stuff */
+    g_string_free (path_dir,  true);
+    g_string_free (path_file, true);
+}
 
 /*************************************************
  * exit
