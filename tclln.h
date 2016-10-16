@@ -1,6 +1,6 @@
 /*
  *    tclln is a library for integrating a tcl-shell with custom commands
- *    Copyright (C) 2015  Andreas Dixius
+ *    Copyright (C) 2016  Andreas Dixius
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU Lesser General Public License as published by
