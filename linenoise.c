@@ -455,7 +455,7 @@ static void freeCompletions(linenoiseCompletions *lc) {
  *
  * The state of the editing is encapsulated into the pointed linenoiseState
  * structure as described in the structure definition. */
-static int completeLine(struct linenoiseState *ls) {
+static int completeLine(struct linenoiseState *ls, char *seq, int *seqread) {
     linenoiseCompletions lc = { 0, NULL };
     int nread;
     char c = 0;
@@ -495,10 +495,30 @@ static int completeLine(struct linenoiseState *ls) {
                     i = (i+1) % (lc.len+1);
                     if (i == lc.len) linenoiseBeep();
                     break;
-                case 27: /* escape */
+                case CTRL_C: /* ctrl-c */
                     /* Re-show original buffer */
                     if (i < lc.len) refreshLine(ls);
                     stop = 1;
+                    c = 0;
+                    break;
+                case ESC: /* escape sequence */
+                    if ((read(ls->ifd,seq,1) == -1) || (read(ls->ifd,seq+1,1) == -1)) {
+                        freeCompletions(&lc);
+                        return -1;
+                    }
+                    if ((seq[0] == '[') && (seq[1] == 'Z')) {
+                        /* shift + tab */
+                        i = (i+lc.len) % (lc.len+1);
+                    } else {
+                        /* Update buffer and return with sequence */
+                        if (i < lc.len) {
+                            abReset(ls->ab);
+                            abAppend(ls->ab,lc.cvec[i],strlen(lc.cvec[i]));
+                            ls->pos = ls->ab->len;
+                        }
+                        *seqread = 1;
+                        stop = 1;
+                    }
                     break;
                 default:
                     /* Update buffer and return */
@@ -898,6 +918,7 @@ static int linenoiseEdit(int stdin_fd, int stdout_fd, struct abuf *ab, const cha
         char c;
         int nread;
         char seq[3];
+        int seqread = 0;
 
         nread = read(l.ifd,&c,1);
         if (nread <= 0) return l.ab->len;
@@ -906,7 +927,7 @@ static int linenoiseEdit(int stdin_fd, int stdout_fd, struct abuf *ab, const cha
          * there was an error reading from fd. Otherwise it will return the
          * character that should be handled next. */
         if (c == 9 && completionCallback != NULL) {
-            c = completeLine(&l);
+            c = completeLine(&l, &seq[0], &seqread);
             /* Return on errors */
             if (c < 0) return l.ab->len;
             /* Read next character when 0 */
@@ -969,8 +990,10 @@ static int linenoiseEdit(int stdin_fd, int stdout_fd, struct abuf *ab, const cha
             /* Read the next two bytes representing the escape sequence.
              * Use two calls to handle slow terminals returning the two
              * chars at different times. */
-            if (read(l.ifd,seq,1) == -1) break;
-            if (read(l.ifd,seq+1,1) == -1) break;
+            if (!seqread) {
+                if (read(l.ifd,seq,1) == -1) break;
+                if (read(l.ifd,seq+1,1) == -1) break;
+            }
 
             /* ESC [ sequences. */
             if (seq[0] == '[') {
@@ -981,6 +1004,12 @@ static int linenoiseEdit(int stdin_fd, int stdout_fd, struct abuf *ab, const cha
                         switch(seq[1]) {
                         case '3': /* Delete key. */
                             linenoiseEditDelete(&l);
+                            break;
+                        case '1': /* Home */
+                            linenoiseEditMoveHome(&l);
+                            break;
+                        case '4': /* End*/
+                            linenoiseEditMoveEnd(&l);
                             break;
                         }
                     }
